@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const WebSocket = require('ws');
 const path = require('path');
 const session = require('express-session');
-const MongoStore = require('connect-mongo')(session);
+const MongoStore = require('connect-mongo');
 const cookieParser = require('cookie-parser');
 
 const User = require('./models/User');
@@ -46,7 +46,6 @@ app.use(cors({
   credentials: true // Разрешить передачу куки
 }));
 
-
 app.use(cookieParser(process.env.SESSION_SECRET));
 
 // Session configuration
@@ -54,7 +53,10 @@ const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  store: new MongoStore({ mongooseConnection: mongoose.connection }),
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URI, 
+    collectionName: 'sessions' 
+  }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
     secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
@@ -93,8 +95,6 @@ const authenticateJWT = (req, res, next) => {
     res.sendStatus(401); // Unauthorized
   }
 };
-
-
 
 // Registration endpoint
 app.post('/signup', async (req, res) => {
@@ -135,7 +135,6 @@ app.post('/login', async (req, res) => {
     res.redirect("/");
   }
 });
-
 
 // Logout endpoint
 app.get('/logout', (req, res) => {
