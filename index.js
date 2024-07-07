@@ -20,10 +20,16 @@ const server = require('http').createServer(app); // HTTP server for WebSocket
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
+// Connect to MongoDB with timeout settings
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 5000, // Таймаут выбора сервера
+  socketTimeoutMS: 45000, // Таймаут сокета
+})
   .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    console.error('Reason:', err.reason);
+  });
 
 // Configure Nunjucks
 nunjucks.configure('views', {
@@ -214,7 +220,7 @@ app.post('/timer/stop/:id', authenticateJWT, async (req, res) => {
 app.get('/timer/update', authenticateJWT, async (req, res) => {
   const userId = req.user._id;
   try {
-    const timers = await Timer.find({ userId });
+    const timers = await Timer.find({ userId }).lean(); // Использование lean() для уменьшения накладных расходов
     timers.forEach(timer => {
       if (timer.isActive) {
         timer.durationInSeconds = Math.floor((new Date() - timer.start) / 1000);
@@ -252,7 +258,7 @@ wss.on('connection', (ws, req) => {
 // Функция для отправки обновлений таймеров
 const sendTimersUpdate = async () => {
   try {
-    const timers = await Timer.find({});
+    const timers = await Timer.find({}).lean(); // Использование lean() для уменьшения накладных расходов
 
     timers.forEach(timer => {
       if (timer.isActive) {
