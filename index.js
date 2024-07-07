@@ -8,7 +8,6 @@ const WebSocket = require('ws');
 const path = require('path');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
-const cookieParser = require('cookie-parser');
 
 const User = require('./models/User');
 const Timer = require('./models/Timer');
@@ -18,14 +17,12 @@ require('dotenv').config();
 const app = express();
 const server = require('http').createServer(app);
 
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000, // Таймаут выбора сервера
-  socketTimeoutMS: 45000, // Таймаут сокета
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
 })
   .then(() => console.log('MongoDB connected'))
   .catch(err => {
@@ -56,7 +53,12 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(cookieParser(process.env.SESSION_SECRET));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.set('view engine', 'njk');
+app.set('views', path.join(__dirname, 'views'));
 
 // Session configuration
 const sessionMiddleware = session({
@@ -69,18 +71,12 @@ const sessionMiddleware = session({
   }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
   },
 });
 
 app.use(sessionMiddleware);
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.set('view engine', 'njk');
-app.set('views', path.join(__dirname, 'views'));
 
 // JWT authentication middleware
 const authenticateJWT = (req, res, next) => {
@@ -147,10 +143,6 @@ app.get('/logout', (req, res) => {
       res.render('index', { user: null, userToken: null });
     }
   });
-});
-
-app.get('/', (req, res) => {
-  res.render('index'); // Предполагается, что у вас есть файл 'index.njk' в папке 'views'
 });
 
 // Create new timer
@@ -250,7 +242,7 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// Функция для отправки обновлений таймеров
+// Function to send timer updates
 const sendTimersUpdate = async () => {
   try {
     const timers = await Timer.find({}).lean();
@@ -271,7 +263,7 @@ const sendTimersUpdate = async () => {
   }
 };
 
-// Запуск отправки обновлений таймеров каждую секунду
+// Start sending timer updates every second
 setInterval(sendTimersUpdate, 1000);
 
 const PORT = process.env.PORT || 10000;
