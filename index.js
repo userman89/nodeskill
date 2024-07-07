@@ -16,19 +16,23 @@ const Timer = require('./models/Timer');
 require('dotenv').config();
 
 const app = express();
-const server = require('http').createServer(app); // HTTP server for WebSocket
+const server = require('http').createServer(app);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
   serverSelectionTimeoutMS: 5000, // Таймаут выбора сервера
   socketTimeoutMS: 45000, // Таймаут сокета
 })
   .then(() => console.log('MongoDB connected'))
   .catch(err => {
     console.error('MongoDB connection error:', err);
-    console.error('Reason:', err.reason);
+    if (err.reason) {
+      console.error('Reason:', err.reason);
+    }
   });
 
 // Configure Nunjucks
@@ -46,10 +50,10 @@ nunjucks.configure('views', {
 });
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*', // Allow access from any domain
+  origin: process.env.CORS_ORIGIN || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true // Allow sending cookies
+  credentials: true,
 }));
 
 app.use(cookieParser(process.env.SESSION_SECRET));
@@ -61,13 +65,13 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
-    collectionName: 'sessions'
+    collectionName: 'sessions',
   }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
     secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-    httpOnly: true
-  }
+    httpOnly: true,
+  },
 });
 
 app.use(sessionMiddleware);
@@ -81,23 +85,16 @@ app.set('views', path.join(__dirname, 'views'));
 // JWT authentication middleware
 const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  console.log('Authorization Header:', authHeader);
-
   if (authHeader) {
     const token = authHeader.split(' ')[1];
-    console.log('Token:', token);
-
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
       if (err) {
-        console.error('JWT verification error:', err);
         return res.sendStatus(403); // Forbidden
       }
-      console.log('JWT verification success:', user);
       req.user = user;
       next();
     });
   } else {
-    console.error('Authorization header missing');
     res.sendStatus(401); // Unauthorized
   }
 };
@@ -105,9 +102,8 @@ const authenticateJWT = (req, res, next) => {
 // Registration endpoint
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
-
   try {
-    const existingUser = await User.findOne({ username }).lean();
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).send("User with that username already exists");
     }
@@ -134,7 +130,6 @@ app.post('/login', async (req, res) => {
     const token = jwt.sign({ _id: user._id, username: user.username }, process.env.ACCESS_TOKEN_SECRET);
     req.session.user = user;
 
-    // Send token to client in Set-Cookie header
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
     res.render('index', { user: user, userToken: token });
   } else {
@@ -155,7 +150,7 @@ app.get('/logout', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.render('index'); // Assuming you have 'index.njk' in the 'views' folder
+  res.render('index'); // Предполагается, что у вас есть файл 'index.njk' в папке 'views'
 });
 
 // Create new timer
@@ -168,13 +163,13 @@ app.post('/timer', authenticateJWT, async (req, res) => {
       description,
       start: new Date(),
       isActive: true,
-      durationInSeconds: 0
+      durationInSeconds: 0,
     });
 
     await newTimer.save();
 
     res.status(201).json({
-      timer: newTimer
+      timer: newTimer,
     });
   } catch (error) {
     console.error('Error creating timer:', error);
@@ -255,7 +250,7 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// Function to send timer updates
+// Функция для отправки обновлений таймеров
 const sendTimersUpdate = async () => {
   try {
     const timers = await Timer.find({}).lean();
@@ -266,23 +261,20 @@ const sendTimersUpdate = async () => {
       }
     });
 
-    const timersData = JSON.stringify(timers);
-
     wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(timersData);
+        client.send(JSON.stringify({ timers }));
       }
     });
   } catch (error) {
-    console.error('Error fetching timers:', error);
+    console.error('Error sending timer updates:', error);
   }
 };
 
-// Start interval to send updates every 1 second
+// Запуск отправки обновлений таймеров каждую секунду
 setInterval(sendTimersUpdate, 1000);
 
-const PORT = process.env.PORT || 3000;
-
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
