@@ -10,104 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
       oldTimers: []
     },
     methods: {
-      createTimer() {
-        if (this.desc.trim() === '') {
-          alert('Please enter a description.');
-          return;
-        }
-
-        const newTimer = {
-          description: this.desc.trim(),
-        };
-
-        fetch('/timer', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${window.AUTH_TOKEN}`
-          },
-          body: JSON.stringify(newTimer)
-        })
-        .then(response => {
-          if (response.ok) {
-            return response.json();
-          } else {
-            throw new Error('Error creating timer');
-          }
-        })
-        .then(data => {
-          this.activeTimers.push(data.timer);
-          console.log('New timer created:', data);
-        })
-        .catch(error => {
-          console.error('Error creating timer:', error);
-        });
-
-        this.desc = '';
-      },
-
-      stopTimer(timerId) {
-        console.log('Timer ID:', timerId);
-        if (!timerId) {
-          console.error('Error: timerId is not defined');
-          return;
-        }
-
-        fetch(`/timer/stop/${timerId}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${window.AUTH_TOKEN}`
-          }
-        })
-        .then(response => {
-          if (response.ok) {
-            return response.json();
-          } else {
-            throw new Error('Error stopping timer');
-          }
-        })
-        .then(data => {
-          const index = this.activeTimers.findIndex(t => t._id === timerId);
-          if (index !== -1) {
-            const stoppedTimer = this.activeTimers.splice(index, 1)[0];
-            stoppedTimer.end = data.timer.end;
-            this.oldTimers.push(stoppedTimer);
-          }
-          console.log('Timer stopped:', data);
-        })
-        .catch(error => {
-          console.error('Error stopping timer:', error);
-        });
-      },
-
-      formatDuration(ms) {
-        if (isNaN(ms)) {
-          return '00:00:00';
-        }
-        const seconds = Math.floor(ms / 1000);
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const remainingSeconds = seconds % 60;
-        return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-      },
-
-      formatOldDuration(start, end) {
-        if (!start || !end) {
-          return '00:00:00';
-        }
-        const durationInSeconds = (new Date(end).getTime() - new Date(start).getTime()) / 1000;
-        const hours = Math.floor(durationInSeconds / 3600);
-        const minutes = Math.floor((durationInSeconds % 3600) / 60);
-        const remainingSeconds = Math.floor(durationInSeconds % 60);
-        return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-      },
-
-      formatTime(timestamp) {
-        if (!timestamp) {
-          return '';
-        }
-        return new Date(timestamp).toLocaleString('ru-RU', { hour12: false });
-      },
+      // ... ваши существующие методы ...
 
       updateTimersUI(timers) {
         const currentTime = new Date().getTime();
@@ -120,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     created() {
       // Подключение к WebSocket
-      const ws = new WebSocket('ws://localhost:3000');
+      const ws = new WebSocket('ws://localhost:3000'); // Исправьте адрес WebSocket, если нужно
 
       ws.onmessage = (event) => {
         const timers = JSON.parse(event.data);
