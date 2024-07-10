@@ -118,9 +118,33 @@ document.addEventListener('DOMContentLoaded', () => {
         this.oldTimers = timers.filter(timer => !timer.isActive);
       }
     },
+
+    // Обновление таймеров с помощью setInterval
+        updateTimers() {
+          fetch('/timer/update', {
+            headers: {
+              'Authorization': `Bearer ${window.AUTH_TOKEN}`
+            }
+          })
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            } else {
+              throw new Error('Error fetching timers');
+            }
+          })
+          .then(data => {
+            this.updateTimersUI(data.timers);
+          })
+          .catch(error => {
+            console.error('Error fetching timers:', error);
+          });
+        }
+      },
+          
     created() {
       // Подключение к WebSocket
-      const ws = new WebSocket('ws://localhost:3000'); // Исправьте адрес WebSocket, если нужно
+      const ws = new WebSocket('ws://localhost:3000'); 
 
       ws.onmessage = (event) => {
         const timers = JSON.parse(event.data);
@@ -133,7 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       ws.onclose = () => {
         console.log('WebSocket connection closed');
-      };
+      },
+      mounted() {
+        // Запуск интервала для обновления таймеров каждые 1 секунду
+        this.intervalId = setInterval(this.updateTimers, 1000);
+      },
+      beforeDestroy() {
+        // Остановка интервала при уничтожении компонента
+        clearInterval(this.intervalId);
+      }
 
       // Инициализация таймеров при загрузке
       fetch('/timer/update', {
