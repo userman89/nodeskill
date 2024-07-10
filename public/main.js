@@ -111,8 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       updateTimersUI(timers) {
         this.activeTimers = timers.filter(timer => timer.isActive).map(timer => {
-          // Правильное вычисление elapsedTime
-          timer.elapsedTime = (new Date() - new Date(timer.start)).getTime();
+          timer.elapsedTime = new Date() - new Date(timer.start);
           return timer;
         });
         this.oldTimers = timers.filter(timer => !timer.isActive);
@@ -139,14 +138,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     },
-          
+
     created() {
-      // Подключение к WebSocket
-      const ws = new WebSocket('ws://localhost:3000'); 
+      const ws = new WebSocket('ws://localhost:3000');
 
       ws.onmessage = (event) => {
         const timers = JSON.parse(event.data);
-        this.updateTimersUI(timers); 
+        this.updateTimersUI(timers);
       };
 
       ws.onerror = (error) => {
@@ -155,17 +153,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       ws.onclose = () => {
         console.log('WebSocket connection closed');
-      },
-      mounted() {
-        // Запуск интервала для обновления таймеров каждые 1 секунду
-        this.intervalId = setInterval(this.updateTimers.bind(this), 1000);
-      },
-      beforeDestroy() {
-        // Остановка интервала при уничтожении компонента
-        clearInterval(this.intervalId);
-      }
+      };
+    },
 
-      // Инициализация таймеров при загрузке
+    mounted() {
+      this.intervalId = setInterval(this.updateTimers.bind(this), 1000);
+    },
+
+    beforeDestroy() {
+      clearInterval(this.intervalId);
+    },
+
+    fetchInitialTimers() {
       fetch('/timer/update', {
         headers: {
           'Authorization': `Bearer ${window.AUTH_TOKEN}`
@@ -187,4 +186,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
