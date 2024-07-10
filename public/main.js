@@ -116,31 +116,29 @@ document.addEventListener('DOMContentLoaded', () => {
           return timer;
         });
         this.oldTimers = timers.filter(timer => !timer.isActive);
+      },
+
+      updateTimers() {
+        fetch('/timer/update', {
+          headers: {
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          } else {
+            throw new Error('Error fetching timers');
+          }
+        })
+        .then(data => {
+          this.updateTimersUI(data.timers);
+        })
+        .catch(error => {
+          console.error('Error fetching timers:', error);
+        });
       }
     },
-
-    // Обновление таймеров с помощью setInterval
-        updateTimers() {
-          fetch('/timer/update', {
-            headers: {
-              'Authorization': `Bearer ${window.AUTH_TOKEN}`
-            }
-          })
-          .then(response => {
-            if (response.ok) {
-              return response.json();
-            } else {
-              throw new Error('Error fetching timers');
-            }
-          })
-          .then(data => {
-            this.updateTimersUI(data.timers);
-          })
-          .catch(error => {
-            console.error('Error fetching timers:', error);
-          });
-        }
-      },
           
     created() {
       // Подключение к WebSocket
@@ -160,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       mounted() {
         // Запуск интервала для обновления таймеров каждые 1 секунду
-        this.intervalId = setInterval(this.updateTimers, 1000);
+        this.intervalId = setInterval(this.updateTimers.bind(this), 1000);
       },
       beforeDestroy() {
         // Остановка интервала при уничтожении компонента
@@ -189,3 +187,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
